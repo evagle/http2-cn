@@ -1,2 +1,2 @@
 # http2-cn
-translation of http2 protocol
+http2协议中文版译文
