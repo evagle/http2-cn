@@ -1,6 +1,8 @@
-HTTP/2 provides an optimized transport for HTTP semantics. HTTP/2 supports all of the core features of HTTP/1.1, but aims to be more efficient in several ways.
+HTTP/2提供了HTTP语义的传输优化。HTTP/2支持HTTP/1.1的所有核心特征，并且在很多方面做的更高效。
 
-The basic protocol unit in HTTP/2 is a frame (Section 4.1). Each frame type serves a different purpose. For example, HEADERS and DATA frames form the basis of HTTP requests and responses (Section 8.1); other frame types like SETTINGS, WINDOW_UPDATE, and PUSH_PROMISE are used in support of other HTTP/2 features.
+HTTP/2的基本协议单元是帧（第4章）。每个帧类型都有不同的目的和用途。例如，报头帧（HEADERS）和数据帧（DATA）组成了基本的HTTP请求和相应；其他的帧类型例如设置帧（SETTINGS）、窗口更新帧（WINDOW_UPDATE）、推送承诺帧（PUSH_PROMISE）被用来支持HTTP/2的其他特性。
+
+
 
 Multiplexing of requests is achieved by having each HTTP request-response exchange associated with its own stream (Section 5). Streams are largely independent of each other, so a blocked or stalled request or response does not prevent progress on other streams.
 

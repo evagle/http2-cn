@@ -1,12 +1,12 @@
-The Hypertext Transfer Protocol (HTTP) is a wildly successful protocol. However, how HTTP/1.1 uses the underlying transport ([RFC7230], Section 6) has several characteristics that have a negative overall effect on application performance today.
+超文本传输协议（HTTP）是一个非常成功的协议。然而，HTTP/1.1所采用的底层传输方法有几个特征，这些特征影响了应用的性能表现。
 
-In particular, HTTP/1.0 allowed only one request to be outstanding at a time on a given TCP connection. HTTP/1.1 added request pipelining, but this only partially addressed request concurrency and still suffers from head-of-line blocking. Therefore, HTTP/1.0 and HTTP/1.1 clients that need to make many requests use multiple connections to a server in order to achieve concurrency and thereby reduce latency.
+例如，HTTP/1.0在指定的TCP连接上同一时刻只允许执行一个请求。虽然HTTP/1.1增加了管道，但是这只部分解决了请求并发的问题，却仍然为报头阻塞所困。因此，HTTP/1.0和HTTP/1.1协议的客户端只能依靠和服务器建立多个连接的策略来实现并发效果，降低时延。
 
-Furthermore, HTTP header fields are often repetitive and verbose, causing unnecessary network traffic, as well as causing the initial TCP [TCP] congestion window to quickly fill. This can result in excessive latency when multiple requests are made on a new TCP connection.
+此外，HTTP头部字段经常重复和冗余，引起了不必要的网络拥塞，并且快速填满了初始的TCP拥塞窗口。当多个请求在一个TCP连接上执行时，这将导致过长的的时延。
 
-HTTP/2 addresses these issues by defining an optimized mapping of HTTP's semantics to an underlying connection. Specifically, it allows interleaving of request and response messages on the same connection and uses an efficient coding for HTTP header fields. It also allows prioritization of requests, letting more important requests complete more quickly, further improving performance.
+HTTP/2通过优化HTTP语义传输解决了这些问题。特别地，HTTP/2允许请求和响应信息在同一个连接上交错传递，并且针对HTTP头部提供了一套高效的编码规则。同时，它允许给请求赋予优先级，让重要的请求优先完成，从而进一步提升性能。
+ 
+由此产生的协议对网络更友好，因为相较于HTTP/1.x，它需要更少的TCP连接。这意味着更少的连接资源竞争，更长的连接生命周期。这些反过来提高了网络的利用率。
 
-The resulting protocol is more friendly to the network, because fewer TCP connections can be used in comparison to HTTP/1.x. This means less competition with other flows, and longer-lived connections, which in turn leads to better utilization of available network capacity.
-
-Finally, HTTP/2 also enables more efficient processing of messages through use of binary message framing.
+最后，HTTP/2允许使用二进制消息帧以提高消息的处理效率。
 
