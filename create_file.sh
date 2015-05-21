@@ -17,11 +17,6 @@ do
     fi
     #echo $line
 done < a.txt
-#for line in `awk -F'[()]' '{print $2}' SUMMARY.md`
-#do
-    #echo $line
-    #if [ ! -f $line ]
-    #then
-    #    touch $line
-    #fi
-#done
+
+rm -f a.txt
+
