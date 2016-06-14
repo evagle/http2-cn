@@ -1,4 +1,5 @@
 The lifecycle of a stream is shown in Figure 2.
+图2显示了流的生命周期。
 
                              +--------+
                      send PP |        | recv PP
@@ -42,9 +43,15 @@ Figure 2: Stream States
 
 Note that this diagram shows stream state transitions and the frames and flags that affect those transitions only. In this regard, CONTINUATION frames do not result in state transitions; they are effectively part of the HEADERS or PUSH_PROMISE that they follow. For the purpose of state transitions, the END_STREAM flag is processed as a separate event to the frame that bears it; a HEADERS frame with the END_STREAM flag set can cause two state transitions.
 
+上面的图显示了流的状态转换以及导致状态转换的帧和标记。虽然CONTINUATION帧并不会引起流的状态转换，单它是他所紧随的HEADERS帧或PUSH_PROMISE帧的有效的组成部分。为了便于描述状态转移，END_STREAM的标识在处理的时候特意和承载它的帧区分开；所以一个带有END_STREAM标识的HEADERS帧会导致两个状态转移。
+
 Both endpoints have a subjective view of the state of a stream that could be different when frames are in transit. Endpoints do not coordinate the creation of streams; they are created unilaterally by either endpoint. The negative consequences of a mismatch in states are limited to the "closed" state after sending RST_STREAM, where frames might be received for some time after closing.
 
+两个端点都对流的状态有一个主观的视图，这个视图在帧真在传输的时候可能会不一样。在创建流的的时候端点之间不需要相互协调，任何一个端点都可以单方面的创建流。状态不匹配的负面后果仅限于发送RST_STREAM之后的关闭状态，有时候可能会在关闭之后收到帧。
+
 Streams have the following states:
+
+流具有以下状态：
 
 **idle:**
 
@@ -59,19 +66,45 @@ The following transitions are valid from this state:
 
 Receiving any frame other than HEADERS or PRIORITY on a stream in this state MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
 
+**空闲：**
+
+所有的流都是以空闲状态开始的。
+
+空闲状态下，以下的状态转换是合法的：
+
++   发送或者接受到HEADERS帧之后流状态变为打开。流标识的选择在5.1.1节中描述。相同的HEADERS帧也可以导致流状态变为半关闭状态。
++   在另一个流发送一个PUSH_PROMISE帧将保留这个空闲流供后续使用。这个流的状态转换为“本地预留”。
++   在另一个流收到一个PUSH_PROMISE帧将保留这个空闲流供后续使用。这个流的状态转换为“远程预留”。
++   注意PUSH_PROMISE不是从空闲流发送的，只是在承诺流ID字段中引用了新的预留的流。
+
+在空闲状态下的流收到任何除HEADERS帧或者PRIORITY帧以外帧都必须处理为协议错误类型的连接错误。
+
 **reserved (local):**
 
-A stream in the "reserved (local)" state is one that has been promised by sending a PUSH_PROMISE frame. A PUSH_PROMISE frame reserves an idle stream by associating the stream with an open stream that was initiated by the remote peer (see Section 8.2). 
+A stream in the "reserved (local)" state is one that has been promised by sending a PUSH_PROMISE frame. A PUSH_PROMISE frame reserves an idle stream by associating the stream with an open stream that was initiated by the remote peer (see Section 8.2). 半关闭（“”）”
 
 In this state, only the following transitions are possible:
 
-+	The endpoint can send a HEADERS frame. This causes the stream to open in a "half-closed (remote)" state.
++	The endpoint can send a HEADERS frame. This causes the stream to open in a "half-closed (remote)" state.”。“”
 +	Either endpoint can send a RST_STREAM frame to cause the stream to become "closed". This releases the stream reservation.
 
 
 An endpoint MUST NOT send any type of frame other than HEADERS, RST_STREAM, or PRIORITY in this state. 
 
 A PRIORITY or WINDOW_UPDATE frame MAY be received in this state. Receiving any type of frame other than RST_STREAM, PRIORITY, or WINDOW_UPDATE on a stream in this state MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+
+**本地预留**
+
+一个本地预留状态表示因为发送了一个PUSH_PROMISE帧而被承诺的流状态。PUSH_PROMISE帧通过将空闲流和一个已经被远端初始化的打开的流关联起来实现预留这个空闲流。
+
+在这个状态下，只会发生以下状态转换：
+
++   端点发送一个HEADERS帧，导致流变成“远程半关闭”状态。
++   任何一端可以发送RST_STREAM帧使得流变为“关闭”状态。这将会释放流的预留。
+
+端点在这个状态下只能发送HEADERS帧、RST_STREAM帧和PRIORITY帧。
+
+这个状态下可以接受PRIORITY、WINDOW_UPDATE和RST_STREAM帧。接收到任何其他帧都应该视为一个协议错误类型的连接错误。
 
 **reserved (remote):**
 
@@ -87,6 +120,19 @@ An endpoint MAY send a PRIORITY frame in this state to reprioritize the reserved
 
 Receiving any type of frame other than HEADERS, RST_STREAM, or PRIORITY on a stream in this state MUST be treated as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
 
+**远程预留**
+
+一个远程预留状态表示被远程预留了。
+
+在这个状态下，只会发生以下状态转换：
+
++   收到一个HEADERS镇，流状态变成“本地半关闭”状态。
++   任何一端可以发送RST_STREAM帧使得流变为“关闭”状态。这将会释放流的预留。
+
+这个状态下端点可以发送一个PRIORITY帧来重置预留流的优先级。端点在这个状态下只能发送WINDOW_UPDATE帧、RST_STREAM帧和PRIORITY帧。
+
+这个状态下可以接受PRIORITY、HEADERS和RST_STREAM帧。接收到任何其他帧都应该视为一个协议错误类型的连接错误。
+
 **open:** 
 
 A stream in the "open" state may be used by both peers to send frames of any type. In this state, sending peers observe advertised stream-level flow-control limits (Section 5.2). 
@@ -94,6 +140,15 @@ A stream in the "open" state may be used by both peers to send frames of any typ
 From this state, either endpoint can send a frame with an END_STREAM flag set, which causes the stream to transition into one of the "half-closed" states. An endpoint sending an END_STREAM flag causes the stream state to become "half-closed (local)"; an endpoint receiving an END_STREAM flag causes the stream state to become "half-closed (remote)". 
 
 Either endpoint can send a RST_STREAM frame from this state, causing it to transition immediately to "closed".
+
+**打开**
+
+打开状态下的流可以发送任何帧。在这种状态下，发送端点监控流级别的流量控制限制广播。
+
+任何端点都可以发送一个携带END_STREAM的帧，使得流状态变为某一种“半关闭”状态。发送END_STREAM的端流状态变为“本地半关闭状态”；接受端变为“远程半关闭”状态。
+
+任何一端都可以发送RST_STREAM使得流变为“关闭”状态。
+
 
 **half-closed (local):**
 
@@ -105,6 +160,15 @@ An endpoint can receive any type of frame in this state. Providing flow-control 
 
 PRIORITY frames received in this state are used to reprioritize streams that depend on the identified stream.
 
+**本地半关闭**
+
+处在“本地半关闭”状态的帧不能被用来发送除WINDOW_UPDATE, PRIORITY和RST_STREAM帧以外的帧。
+
+当收到带有END_STREAM标识的帧或者任何一端发送RST_STREAM时，流状态变为“关闭”。
+
+这个状态下端点可以收到任何类型的帧。为了继续收到流量控制帧，利用WINDOW_UPDATE帧提供流量控制授权是非常必要的。在这个状态下，WINDOW_UPDATE帧可能在携带有END_STREAM标识的帧发送之后短暂的时期内到达，而接收者可以忽略这些WINDOW_UPDATE帧。
+
+
 **half-closed (remote):**
 
 A stream that is "half-closed (remote)" is no longer being used by the peer to send frames. In this state, an endpoint is no longer obligated to maintain a receiver flow-control window. 
@@ -115,13 +179,32 @@ A stream that is "half-closed (remote)" can be used by the endpoint to send fram
 
 A stream can transition from this state to "closed" by sending a frame that contains an END_STREAM flag or when either peer sends a RST_STREAM frame.
 
+**远程半关闭**
+
+处在“远程半关闭”状态的流不能被对等端用来发送任何帧。在这个状态下，端点不在有义务对接受者流量控制窗口进行维护。
+
+如果在这个状态下，端点收到WINDOW_UPDATE, PRIORITY, 和RST_STREAM帧以外的帧，它必须回复流关闭类型的流错误。
+
+“远程半关闭”的流可以被端点用来发送任何帧。端点继续监控流级别的流量控制限制的广播。
+
+可以通过发送含有END_STREAM标识的帧或者RST_STREAM帧使得流变成“关闭”状态。
+
+
 **closed:**
 
 The "closed" state is the terminal state. 
 
+**关闭**
+
+关闭状态是最终状态。
+
 An endpoint MUST NOT send frames other than PRIORITY on a closed stream. An endpoint that receives any frame other than PRIORITY after receiving a RST_STREAM MUST treat that as a stream error (Section 5.4.2) of type STREAM_CLOSED. Similarly, an endpoint that receives any frames after receiving a frame with the END_STREAM flag set MUST treat that as a connection error (Section 5.4.1) of type STREAM_CLOSED, unless the frame is permitted as described below. 
 
+端点不能在一个已关闭的流上发除了PRIORITY帧以外的帧。端点收到非PRIORITY帧必须处理为流已关闭错误。同样的，在收到带有END_STREAM帧之后收到任何帧都必须视为流关闭类型的连接错误。除非帧符合以下条件：
+
 WINDOW_UPDATE or RST_STREAM frames can be received in this state for a short period after a DATA or HEADERS frame containing an END_STREAM flag is sent. Until the remote peer receives and processes RST_STREAM or the frame bearing the END_STREAM flag, it might send frames of these types. Endpoints MUST ignore WINDOW_UPDATE or RST_STREAM frames received in this state, though endpoints MAY choose to treat frames that arrive a significant time after sending END_STREAM as a connection error (Section 5.4.1) of type PROTOCOL_ERROR. 
+
+WINDOW_UPDATE或RST_STREAM帧可以在收到带有END_STREAM标识的DATA帧或HEADERS帧之后短暂的时期内被接收。直到远程对等端收到并且处理了RST_STREAM或者带有END_STREAM的帧，它可以发送这两类帧。虽然端点可能会选择在发送END_STREAM之后很长时间之后收到帧视为是协议错误类型的连接错误，但是端点必须忽略关闭状态下收到的WINDOW_UPDATE或RST_STREAM帧。
 
 PRIORITY frames can be sent on closed streams to prioritize streams that are dependent on the closed stream. Endpoints SHOULD process PRIORITY frames, though they can be ignored if the stream has been removed from the dependency tree (see Section 5.3.4). 
 
