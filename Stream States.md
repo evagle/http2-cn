@@ -208,12 +208,20 @@ WINDOW_UPDATE或RST_STREAM帧可以在收到带有END_STREAM标识的DATA帧或H
 
 PRIORITY frames can be sent on closed streams to prioritize streams that are dependent on the closed stream. Endpoints SHOULD process PRIORITY frames, though they can be ignored if the stream has been removed from the dependency tree (see Section 5.3.4). 
 
+PRIORITY帧可以在已关闭的流中发送来实现设置依赖于这个已关闭的流的流的优先级。尽管当流已经从依赖树种被移除之后可以忽略PRIORITY帧，但端点还是应该处理PRIORITY帧。
+
 If this state is reached as a result of sending a RST_STREAM frame, the peer that receives the RST_STREAM might have already sent -- or enqueued for sending -- frames on the stream that cannot be withdrawn. An endpoint MUST ignore frames that it receives on closed streams after it has sent a RST_STREAM frame. An endpoint MAY choose to limit the period over which it ignores frames and treat frames that arrive after this time as being in error. 
+
+当流因为发送RST_STREAM帧而变为关闭状态时，收到RST_STREAM帧的对等端可能已经往流中发送，或者准备发送无法撤销的帧。所以端点必须忽视在发送RST_STREAM帧时候收到的帧。端点可以选择在一段时间内忽略这些帧，然后超过这个时间到达的帧都视为错误。
 
 Flow-controlled frames (i.e., DATA) received after sending RST_STREAM are counted toward the connection flow-control window. Even though these frames might be ignored, because they are sent before the sender receives the RST_STREAM, the sender will consider the frames to count against the flow-control window. 
 
+在发送RST_STREAM之后收到的流量控制帧统计入连接的流量控制窗口。虽然这些帧可以被忽略，但是它们是在发送者收到RST_STREAM之前发送的帧，所以发送者会认为这些帧仍然应该计入流量控制窗口。
+
 An endpoint might receive a PUSH_PROMISE frame after it sends RST_STREAM. PUSH_PROMISE causes a stream to become "reserved" even if the associated stream has been reset. Therefore, a RST_STREAM is needed to close an unwanted promised stream.
 In the absence of more specific guidance elsewhere in this document, implementations SHOULD treat the receipt of a frame that is not expressly permitted in the description of a state as a connection error (Section 5.4.1) of type PROTOCOL_ERROR. Note that PRIORITY can be sent and received in any stream state. Frames of unknown types are ignored.
+
+端点可能会在发送RST_STREAM之后收到一个PUSH_PROMISE帧。即使在流已经被重置的情况下，PUSH_PROMISE帧也会引起流状态变为保留状态。因此，需要一个RST_STREAM帧来关闭一个不希望被承诺的流。由于这个文档缺乏更明确的指导，实现者应该收到在相应状态下没有明确允许的帧时都处理成连接错误。PRIORITY可以在任何状态下发送或者接收。忽略未知类型的帧。
 
 An example of the state transitions for an HTTP request/response exchange can be found in Section 8.1. An example of the state transitions for server push can be found in Sections 8.2.1 and 8.2.2.
 
